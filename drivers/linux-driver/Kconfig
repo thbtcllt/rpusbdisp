@@ -24,3 +24,17 @@ config RPUSBDISP_FPS
 	  This value can be overridden by the modprobe
 	  with the fps parameter 
 
+config RPUSBDISP_ROTATION
+	int "set display orientation (EXPERIMENTAL)"
+	range 0 3 	
+	default 0
+	depends on FB_RPUSBDISP
+	help
+	  Rotate the display with the following angle (counter clockwise):
+	  0: no rotation
+	  1: 90 rotation 
+	  2: 180 rotation
+	  3: 270 rotation 
+	  This value can be overridden by the modprobe with the rotate parameter 
+
+

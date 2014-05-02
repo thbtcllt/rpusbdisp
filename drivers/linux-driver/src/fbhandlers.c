@@ -86,9 +86,15 @@ static inline struct rpusbdisp_fb_private * _get_fb_private(struct fb_info * inf
 
 
 static void _clear_dirty_rect(struct dirty_rect * rect) {
-    rect->left = RP_DISP_DEFAULT_WIDTH;
+    if ((rotate==1) || (rotate==3))
+	rect->left = RP_DISP_DEFAULT_HEIGHT;
+    else
+	rect->left = RP_DISP_DEFAULT_WIDTH;
     rect->right = -1;
-    rect->top = RP_DISP_DEFAULT_HEIGHT;
+    if ((rotate==1) || (rotate==3))
+	rect->top = RP_DISP_DEFAULT_WIDTH;
+    else
+	rect->top = RP_DISP_DEFAULT_HEIGHT;
     rect->bottom = -1;
     atomic_set(&rect->dirty_flag,0);
 }
@@ -117,18 +123,59 @@ static  void _display_update( struct fb_info *p, int x, int y, int width, int he
     if (atomic_dec_and_test(&pa->unsync_flag)) {
         // force the dirty rect to cover the full display area if the display is not synced.
         pa->dirty_rect.left = 0;
-        pa->dirty_rect.right = p->var.width-1;
+	if ((rotate==1) || (rotate==3))
+            pa->dirty_rect.right = p->var.height-1;
+	else
+            pa->dirty_rect.right = p->var.width-1;
         pa->dirty_rect.top = 0;
-        pa->dirty_rect.bottom = p->var.height-1;
+	if ((rotate==1) || (rotate==3))
+            pa->dirty_rect.bottom = p->var.width-1;
+	else
+            pa->dirty_rect.bottom = p->var.height-1;
 
         clear_dirty = 1;
     } else {
-        
-        if (pa->dirty_rect.top > y) pa->dirty_rect.top = y;
-        if (pa->dirty_rect.bottom < height+y-1) pa->dirty_rect.bottom = height+y-1;
-        if (pa->dirty_rect.left > x) pa->dirty_rect.left = x;
-        if (pa->dirty_rect.right < width+x-1) pa->dirty_rect.right = width + x - 1;
+	switch (rotate) {
+	    case 1:
+	    {
+        	if (pa->dirty_rect.top > x) pa->dirty_rect.top = x;
+        	if (pa->dirty_rect.bottom < width+x-1) pa->dirty_rect.bottom = width+x-1;
+        	if (pa->dirty_rect.left > (RP_DISP_DEFAULT_WIDTH-y-height)) pa->dirty_rect.left = (RP_DISP_DEFAULT_WIDTH-y-height);
+        	if (pa->dirty_rect.right < (RP_DISP_DEFAULT_WIDTH-y-1)) pa->dirty_rect.right = (RP_DISP_DEFAULT_WIDTH-y-1);
+		/*pa->dirty_rect.left = 0;
+		pa->dirty_rect.right = p->var.height-1;
+		pa->dirty_rect.top = 0;
+		pa->dirty_rect.bottom = p->var.width-1;*/
+	    }
+	    break;
 
+	    case 2:
+	    {
+        	if (pa->dirty_rect.top > RP_DISP_DEFAULT_HEIGHT-y-height) pa->dirty_rect.top = RP_DISP_DEFAULT_HEIGHT-y-height;
+        	if (pa->dirty_rect.bottom < RP_DISP_DEFAULT_HEIGHT-y-1) pa->dirty_rect.bottom = RP_DISP_DEFAULT_HEIGHT-y-1;
+        	if (pa->dirty_rect.left > RP_DISP_DEFAULT_WIDTH-x-width) pa->dirty_rect.left = RP_DISP_DEFAULT_WIDTH-x-width;
+        	if (pa->dirty_rect.right < RP_DISP_DEFAULT_WIDTH-x-1) pa->dirty_rect.right = RP_DISP_DEFAULT_WIDTH-x-1;
+	    }
+	    break;
+
+	    case 3:
+	    {
+        	if (pa->dirty_rect.top > RP_DISP_DEFAULT_HEIGHT-x-width) pa->dirty_rect.top = RP_DISP_DEFAULT_HEIGHT-x-width;
+        	if (pa->dirty_rect.bottom < RP_DISP_DEFAULT_HEIGHT-x-1) pa->dirty_rect.bottom = RP_DISP_DEFAULT_HEIGHT-x-1;
+        	if (pa->dirty_rect.left > y) pa->dirty_rect.left = y;
+        	if (pa->dirty_rect.right < height+y-1) pa->dirty_rect.right = height + y - 1;
+	    }
+	    break;
+
+	    default:
+	    {
+        	if (pa->dirty_rect.top > y) pa->dirty_rect.top = y;
+        	if (pa->dirty_rect.bottom < height+y-1) pa->dirty_rect.bottom = height+y-1;
+        	if (pa->dirty_rect.left > x) pa->dirty_rect.left = x;
+        	if (pa->dirty_rect.right < width+x-1) pa->dirty_rect.right = width + x - 1;
+	    }
+	    break;
+	}
     }
 
     if (pa->dirty_rect.top > pa->dirty_rect.bottom || pa->dirty_rect.left > pa->dirty_rect.right) {
@@ -143,38 +190,175 @@ static  void _display_update( struct fb_info *p, int x, int y, int width, int he
             case DISPLAY_UPDATE_HINT_FILLRECT:
             {
                 const struct fb_fillrect * fillrt = (struct fb_fillrect *)hint_data;
-                if (rpusbdisp_usb_try_draw_rect(pa->binded_usbdev, fillrt->dx, fillrt->dy, fillrt->dx + fillrt->width-1, 
-                    fillrt->dy + fillrt->height-1, fillrt->color, fillrt->rop==ROP_XOR?RPUSBDISP_OPERATION_XOR:RPUSBDISP_OPERATION_COPY))
-                {
-                    // data sent, rect the dirty rect
-                    _clear_dirty_rect(&pa->dirty_rect);
-                  
-                        
-                }
+		switch (rotate) {
+		    case 1:
+		    {
+		        if (rpusbdisp_usb_try_draw_rect(pa->binded_usbdev,
+			    RP_DISP_DEFAULT_WIDTH - fillrt->dy - fillrt->height, fillrt->dx,
+			    RP_DISP_DEFAULT_WIDTH - fillrt->dy - 1, fillrt->dx + fillrt->width - 1, 
+			    fillrt->color, fillrt->rop==ROP_XOR?RPUSBDISP_OPERATION_XOR:RPUSBDISP_OPERATION_COPY))
+		        {
+		            // data sent, rect the dirty rect
+		            _clear_dirty_rect(&pa->dirty_rect);
+		        }
+		    }
+		    break;
+
+		    case 2:
+		    {
+		        if (rpusbdisp_usb_try_draw_rect(pa->binded_usbdev,
+			    RP_DISP_DEFAULT_WIDTH - fillrt->dx - fillrt->width, RP_DISP_DEFAULT_HEIGHT - fillrt->dy - fillrt->height,
+			    RP_DISP_DEFAULT_WIDTH - fillrt->dx - 1, RP_DISP_DEFAULT_HEIGHT - fillrt->dy - 1, 
+			    fillrt->color, fillrt->rop==ROP_XOR?RPUSBDISP_OPERATION_XOR:RPUSBDISP_OPERATION_COPY))
+		        {
+		            // data sent, rect the dirty rect
+		            _clear_dirty_rect(&pa->dirty_rect);
+		        }
+		    }
+		    break;
+
+		    case 3:
+		    {
+		        if (rpusbdisp_usb_try_draw_rect(pa->binded_usbdev,
+			    fillrt->dy, RP_DISP_DEFAULT_HEIGHT - fillrt->dx - fillrt->width,
+			    fillrt->dy + fillrt->height - 1, RP_DISP_DEFAULT_HEIGHT - fillrt->dx - 1, 
+			    fillrt->color, fillrt->rop==ROP_XOR?RPUSBDISP_OPERATION_XOR:RPUSBDISP_OPERATION_COPY))
+		        {
+		            // data sent, rect the dirty rect
+		            _clear_dirty_rect(&pa->dirty_rect);
+		        }
+		    }
+		    break;
+
+		    default:
+		    {
+		        if (rpusbdisp_usb_try_draw_rect(pa->binded_usbdev,
+			    fillrt->dx, fillrt->dy,
+			    fillrt->dx + fillrt->width-1, fillrt->dy + fillrt->height-1, 
+			    fillrt->color, fillrt->rop==ROP_XOR?RPUSBDISP_OPERATION_XOR:RPUSBDISP_OPERATION_COPY))
+		        {
+		            // data sent, rect the dirty rect
+		            _clear_dirty_rect(&pa->dirty_rect);
+		        }
+		    }
+		    break;
+		}
             }
             break;
 
             case DISPLAY_UPDATE_HINT_COPYAREA:
             {
                 const  struct fb_copyarea * copyarea = (struct fb_copyarea *)hint_data;
-                if (rpusbdisp_usb_try_copy_area(pa->binded_usbdev, copyarea->sx, copyarea->sy, copyarea->dx,  copyarea->dy, 
-                    copyarea->width, copyarea->height))
-                {
-                    // data sent, rect the dirty rect
-                    _clear_dirty_rect(&pa->dirty_rect);
-                       
-                }
+		switch (rotate) {
+		    case 1:
+		    {
+		        if (rpusbdisp_usb_try_copy_area(pa->binded_usbdev,
+			    RP_DISP_DEFAULT_WIDTH - copyarea->sy - copyarea->height, copyarea->sx,
+			    RP_DISP_DEFAULT_WIDTH - copyarea->dy - copyarea->height, copyarea->dx, 
+		            copyarea->height, copyarea->width))
+		        {
+		            // data sent, rect the dirty rect
+		            _clear_dirty_rect(&pa->dirty_rect);		               
+		        }
+		    }
+		    break;
 
+		    case 2:
+		    {
+		        if (rpusbdisp_usb_try_copy_area(pa->binded_usbdev,
+			    RP_DISP_DEFAULT_WIDTH - copyarea->sx - copyarea->width, RP_DISP_DEFAULT_HEIGHT - copyarea->sy - copyarea->height,
+			    RP_DISP_DEFAULT_WIDTH - copyarea->dx - copyarea->width, RP_DISP_DEFAULT_HEIGHT - copyarea->dy - copyarea->height, 
+		            copyarea->width, copyarea->height))
+		        {
+		            // data sent, rect the dirty rect
+		            _clear_dirty_rect(&pa->dirty_rect);		               
+		        }
+		    }
+		    break;
+
+		    case 3:
+		    {
+		        if (rpusbdisp_usb_try_copy_area(pa->binded_usbdev,
+			    copyarea->sy, RP_DISP_DEFAULT_HEIGHT - copyarea->sx - copyarea->width,
+			    copyarea->dy, RP_DISP_DEFAULT_HEIGHT - copyarea->dx - copyarea->width, 
+		            copyarea->height, copyarea->width))
+		        {
+		            // data sent, rect the dirty rect
+		            _clear_dirty_rect(&pa->dirty_rect);		               
+		        }
+		    }
+		    break;
+
+		    default:
+		    {
+		        if (rpusbdisp_usb_try_copy_area(pa->binded_usbdev,
+			    copyarea->sx, copyarea->sy,
+			    copyarea->dx, copyarea->dy, 
+		            copyarea->width, copyarea->height))
+		        {
+		            // data sent, rect the dirty rect
+		            _clear_dirty_rect(&pa->dirty_rect);		               
+		        }
+		    }
+		    break;
+		}
             }
             break;
-            default:
-                if (rpusbdisp_usb_try_send_image(pa->binded_usbdev, (const pixel_type_t *)p->fix.smem_start,
-                     pa->dirty_rect.left, pa->dirty_rect.top, pa->dirty_rect.right, pa->dirty_rect.bottom, p->fix.line_length/(RP_DISP_DEFAULT_PIXEL_BITS/8),
-                     clear_dirty)) {
-                    // data sent, rect the dirty rect
-                    _clear_dirty_rect(&pa->dirty_rect);
 
-                } 
+            default:
+	    {
+		_u16 *src = (_u16 *)(p->fix.smem_start);
+		_u16 *dest = (_u16 *)((unsigned long)(p->fix.smem_start)+p->fix.smem_len);
+		int i,j;
+
+		switch (rotate) {
+		    case 1:
+		    {
+			for (j=0;j<RP_DISP_DEFAULT_HEIGHT-1;j++) {
+				for (i=0;i<RP_DISP_DEFAULT_WIDTH-1;i++) {
+					dest[RP_DISP_DEFAULT_WIDTH*(j+1)-i-1]=src[j+RP_DISP_DEFAULT_HEIGHT*i];
+				}
+			}
+		    }
+		    break;
+
+		    case 2:
+		    {
+			for (j=0;j<RP_DISP_DEFAULT_HEIGHT*RP_DISP_DEFAULT_WIDTH-1;j++) {
+			    dest[RP_DISP_DEFAULT_HEIGHT*RP_DISP_DEFAULT_WIDTH-1-j]=src[j];
+			}
+		    }
+		    break;
+
+		    case 3:
+		    {
+			for (j=0;j<RP_DISP_DEFAULT_HEIGHT-1;j++) {
+				for (i=0;i<RP_DISP_DEFAULT_WIDTH-1;i++) {
+					dest[RP_DISP_DEFAULT_WIDTH*(RP_DISP_DEFAULT_HEIGHT-j-1)+i]=src[j+RP_DISP_DEFAULT_HEIGHT*i];
+				}
+			}
+		    }
+		    break;
+
+		}
+		if (rotate) {
+		    if (rpusbdisp_usb_try_send_image(pa->binded_usbdev, (const pixel_type_t *)(dest),
+		        pa->dirty_rect.left, pa->dirty_rect.top, pa->dirty_rect.right, pa->dirty_rect.bottom, RP_DISP_DEFAULT_WIDTH,
+		        clear_dirty)) {
+		        // data sent, rect the dirty rect
+		        _clear_dirty_rect(&pa->dirty_rect);
+
+		    }
+		} else {
+		    if (rpusbdisp_usb_try_send_image(pa->binded_usbdev, (const pixel_type_t *)p->fix.smem_start,
+		        pa->dirty_rect.left, pa->dirty_rect.top, pa->dirty_rect.right, pa->dirty_rect.bottom, p->fix.line_length/(RP_DISP_DEFAULT_PIXEL_BITS/8),
+		        clear_dirty)) {
+		        // data sent, rect the dirty rect
+		        _clear_dirty_rect(&pa->dirty_rect);
+
+		    }
+		}
+	    }
         }
 
     }
@@ -280,8 +464,11 @@ static void _display_defio_handler(struct fb_info *info,
         if (bottom<current_val) bottom = current_val;
 
     }
-    if (bottom >= RP_DISP_DEFAULT_HEIGHT) bottom = RP_DISP_DEFAULT_HEIGHT - 1;
-
+    if ((rotate ==1) || (rotate ==3)) {
+        if (bottom >= RP_DISP_DEFAULT_WIDTH) bottom = RP_DISP_DEFAULT_WIDTH - 1;
+    } else {
+        if (bottom >= RP_DISP_DEFAULT_HEIGHT) bottom = RP_DISP_DEFAULT_HEIGHT - 1;
+    }
 
     _display_update(info, 0, top, info->var.width, bottom - top + 1, DISPLAY_UPDATE_HINT_NONE, NULL);
 }
@@ -370,12 +557,26 @@ static int _on_create_new_fb(struct fb_info ** out_fb, struct rpusbdisp_dev *dev
     fb->fix = _vfb_fix;
     fb->var = _var_info;
 
+    if ((rotate ==1) || (rotate ==3)) {
+    	fb->fix.line_length = RP_DISP_DEFAULT_HEIGHT * RP_DISP_DEFAULT_PIXEL_BITS/8;
+	fb->var.xres = RP_DISP_DEFAULT_HEIGHT;
+	fb->var.yres = RP_DISP_DEFAULT_WIDTH;
+	fb->var.xres_virtual = RP_DISP_DEFAULT_HEIGHT;
+	fb->var.yres_virtual = RP_DISP_DEFAULT_WIDTH;
+	fb->var.width = RP_DISP_DEFAULT_HEIGHT;
+	fb->var.height = RP_DISP_DEFAULT_WIDTH;
+    }
+
 
     fb->fbops       = &_display_fbops;
     fb->flags       = FBINFO_DEFAULT | FBINFO_VIRTFB;
     
     fbmem_size = _var_info.yres * _vfb_fix.line_length; // Correct issue with size allocation (too big)
-    fbmem =  rvmalloc(fbmem_size);
+    
+    if (rotate) // if a rotation is expected the size must be double in order to create the rotated image that will be send to rpusbdisp
+        fbmem =  rvmalloc(2*fbmem_size);
+    else
+        fbmem =  rvmalloc(fbmem_size);
     if (!fbmem) {
 
         err("Cannot allocate fb memory.\n");
@@ -438,7 +639,10 @@ failed_on_reg:
 failed_nodefio:
     fb_dealloc_cmap(&fb->cmap);
 failed_nocmap:
-    rvfree(fbmem, fbmem_size);
+    if (rotate)
+        rvfree(fbmem, 2 * fbmem_size);
+    else
+        rvfree(fbmem, fbmem_size);
 failed_nofb:
     framebuffer_release(fb);
 failed:
@@ -456,7 +660,10 @@ static void _on_release_fb(struct fb_info * fb)
     unregister_framebuffer(fb);
     kfree(fb->fbdefio);
     fb_dealloc_cmap(&fb->cmap);
-    rvfree(fb->screen_base, fb->fix.smem_len);
+    if (rotate)
+        rvfree(fb->screen_base, 2*fb->fix.smem_len);
+    else
+        rvfree(fb->screen_base, fb->fix.smem_len);
     framebuffer_release(fb);
 
     

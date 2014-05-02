@@ -44,6 +44,9 @@ int fps = 0;
 module_param(fps,int,0);
 MODULE_PARM_DESC(fps,"Specify the frame rate used to refresh the display (override kernel config)");
 
+int rotate = -1;
+module_param(rotate,int,0);
+MODULE_PARM_DESC(rotate,"Specify the screen rotation (oveeride kernel config). 0: no rotation, 1 or 90: 90 degree rotation (2/180 and 3/270 not yet supported)");
 
 
 static int __init usb_disp_init(void)
@@ -59,6 +62,28 @@ static int __init usb_disp_init(void)
             fps = 16;
 #endif
         }
+
+        if (rotate == -1) {
+	    /* rotation is not set through the modprobe command. Use the value defined in the .config */
+#ifdef CONFIG_RPUSBDISP_ROTATION
+	    rotate = 1;
+#else
+	    /* Just in case for background compliance. Maybe the Kconfig file of the driver is not integrated */
+            rotate = 0;
+#endif
+        }
+
+	if (rotate == 90)
+		rotate = 1;
+	if (rotate == 180)
+		rotate = 2;
+	if (rotate == 270)
+		rotate = 3;
+
+	if ((rotate!=0) && (rotate!=1) && (rotate!=2) && (rotate!=3)) {
+		err("rotate parameter must be set to 0 (no rotation), 1 or 90 (90° rotation), 2 or 180 (180° rotation), 3 or 270 (270° rotation)");
+		return -1;
+	}
 
     do {
 	    

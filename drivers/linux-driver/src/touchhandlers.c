@@ -32,9 +32,13 @@ static int _on_create_input_dev(struct input_dev ** inputdev)
     
     (*inputdev)->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);  
 
-
-    input_set_abs_params((*inputdev), ABS_X, 0, RP_DISP_DEFAULT_WIDTH, 0, 0);
-    input_set_abs_params((*inputdev), ABS_Y, 0, RP_DISP_DEFAULT_HEIGHT, 0, 0);
+    if ((rotate==1) || (rotate==3)) {
+        input_set_abs_params((*inputdev), ABS_X, 0, RP_DISP_DEFAULT_HEIGHT, 0, 0);
+        input_set_abs_params((*inputdev), ABS_Y, 0, RP_DISP_DEFAULT_WIDTH, 0, 0);
+    } else {
+        input_set_abs_params((*inputdev), ABS_X, 0, RP_DISP_DEFAULT_WIDTH, 0, 0);
+        input_set_abs_params((*inputdev), ABS_Y, 0, RP_DISP_DEFAULT_HEIGHT, 0, 0);
+    }
     input_set_abs_params((*inputdev), ABS_PRESSURE, 0, 1, 0, 0);  
 
     (*inputdev)->name = "RoboPeakUSBDisplayTS";
@@ -81,8 +85,35 @@ void touchhandler_send_ts_event(struct rpusbdisp_dev * dev, int x, int y, int to
 {
     if (!_default_input_dev || !_live_flag) return;
     if (touch) {
-        input_report_abs(_default_input_dev,ABS_X, x);
-        input_report_abs(_default_input_dev,ABS_Y, y);
+	switch (rotate) {
+	    case 1:
+	    {
+        	input_report_abs(_default_input_dev,ABS_X, y);
+        	input_report_abs(_default_input_dev,ABS_Y, (RP_DISP_DEFAULT_WIDTH-x-1));
+	    }
+	    break;
+
+	    case 2:
+	    {
+        	input_report_abs(_default_input_dev,ABS_X, (RP_DISP_DEFAULT_WIDTH-x-1));
+        	input_report_abs(_default_input_dev,ABS_Y, (RP_DISP_DEFAULT_HEIGHT-y-1));
+	    }
+	    break;
+
+	    case 3:
+	    {
+        	input_report_abs(_default_input_dev,ABS_X, (RP_DISP_DEFAULT_HEIGHT-y-1));
+        	input_report_abs(_default_input_dev,ABS_Y, x);
+	    }
+	    break;
+
+	    default:
+	    {
+        	input_report_abs(_default_input_dev,ABS_X, x);
+        	input_report_abs(_default_input_dev,ABS_Y, y);
+	    }
+	    break;
+	}
         input_report_abs(_default_input_dev, ABS_PRESSURE, 1);
         input_report_key(_default_input_dev,BTN_TOUCH, 1);
 

@@ -23,7 +23,7 @@ How to Integrate the Driver in the Kernel build operation
     4) Change the .config of your kernel through the menuconfig
        * make ARCH=your_architecture your_defconfig menuconfig
     5) In the menu "Device Drivers -> Graphic supports -> Support for frame buffer display" a Robopeak USB Display menu appears
-    6) Set the Robopeak USB Display as module (this selection activates automatically the requested frame buffer option, see Prerequites of How to build the Linux Kernel Driver chapter)
+    6) Set the Robopeak USB Display as module (this selection activates automatically the requested frame buffer option, see Prerequite of How to build the Linux Kernel Driver chapter)
     7) Generate your kernel
 
 
@@ -128,6 +128,12 @@ By default the frame per seconds is set to 16. You can change it with the fps op
     modprobe rp_usbdisplay fps=25
 
 In this case the frame per seconds is set to 25.
+
+Moreover it is possible to define a display rotation with the rotate option
+
+    modprobe rp_usbdisplay rotate=90
+
+In this case the frame buffer content is rotated to 90 degre (counter clockwise) before to be send to the display. Authorized values for rotation are 0, 90 (or 1), 180 (or 2) and 270 (or 3)
 
 If you want to let the kernel load the driver automatically each time when the system starts, you can added the following line into the file /etc/modules:
     rp_usbdisplay

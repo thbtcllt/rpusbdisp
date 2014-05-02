@@ -42,6 +42,7 @@
 #include "inc/protocol.h"
 
 extern int fps;
+extern int rotate;
 
 // object predefine
 

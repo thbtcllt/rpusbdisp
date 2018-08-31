@@ -7,9 +7,11 @@ Visit RoboPeak Website for details.
 
 Demo Video
 ====================================
-http://www.youtube.com/watch?v=KCNrq1hb99U
+For International Users:
+[YouTube Video](http://www.youtube.com/watch?v=KCNrq1hb99U)
 
-[国内用户:] http://www.tudou.com/programs/view/rJd1TwZzRZk/
+国内用户(Chinese users):
+[土豆视频](http://www.tudou.com/programs/view/rJd1TwZzRZk/)
 
 
 How to Integrate the Driver in the Kernel build operation
@@ -23,7 +25,7 @@ How to Integrate the Driver in the Kernel build operation
     4) Change the .config of your kernel through the menuconfig
        * make ARCH=your_architecture your_defconfig menuconfig
     5) In the menu "Device Drivers -> Graphic supports -> Support for frame buffer display" a Robopeak USB Display menu appears
-    6) Set the Robopeak USB Display as module (this selection activates automatically the requested frame buffer option, see Prerequite of How to build the Linux Kernel Driver chapter)
+    6) Set the Robopeak USB Display as module (this selection activates automatically the requested frame buffer option, see Prerequites of How to build the Linux Kernel Driver chapter)
     7) Generate your kernel
 
 
@@ -75,7 +77,9 @@ You should have followed the steps described in the prerequisite section already
 
 Enter the Robopeak USB Displayer linux kernel driver folder (i.e. rpusbdisp/drivers/linux-driver), using the following command:
 
+```shell
 $ make KERNEL_SOURCE_DIR=~/workspace/linux-kernel
+```
 
 You should find the build result under the current folder: rp_usbdisplay.ko
 
@@ -87,7 +91,9 @@ You should have followed the steps described in the prerequisite section already
 Let's also assume the target platform is ARMv7. We need to use the cross-compiler : arm-linux-gnueabihf-gcc.
 
 Enter the following command to build the kernel driver for the target:
+```shell
 make CROSS_COMPILE=arm-linux-gnueabihf- ARCH=arm KERNEL_SOURCE_DIR=~/workspace/target-linux-kernel
+```
 
 You should find the build result under the current folder: rp_usbdisplay.ko
 
@@ -95,7 +101,7 @@ You should find the build result under the current folder: rp_usbdisplay.ko
 How to Use the Kernel Driver
 ============================
 
-I.deploy the dependencies modules
+I. Deploy the dependencies modules
 ---------------------------------
 If you had re-configed and recompiled the Linux kernel as required by the building process, you need to deploy the new kernel and all the kernel modules to the target system.
 
@@ -106,7 +112,7 @@ To be specific, you need to deploy AT LEAST the following kernel module to the  
   * sysimgblt.ko
   * fb_sys_fops.ko
 
-II. deploy the compiled kernel driver
+II. Deploy the compiled kernel driver
 -------------------------------------
 
 Reboot the target system to using the new kernel. Copy the compiled usb display driver (rp_usbdisplay.ko) to the following location:
@@ -115,9 +121,9 @@ Reboot the target system to using the new kernel. Copy the compiled usb display 
 
 Enter the above folder and execute the following command:
     
-    depmod -a
+    depmod 
 
-III. load the kernel driver
+III. Load the kernel driver
 ---------------------------
 Once you had deployed the kernel driver and all of its dependencies, you can ask the kernel to load the driver using :
     
@@ -138,13 +144,14 @@ In this case the frame buffer content is rotated to 90 degre (counter clockwise)
 If you want to let the kernel load the driver automatically each time when the system starts, you can added the following line into the file /etc/modules:
     rp_usbdisplay
 
-(i.e. cat rp_usbdisplay >> /etc/modules)
+(i.e. echo rp_usbdisplay >> /etc/modules)
 
 
-IV. verify the driver
+IV. Verify the driver
 ---------------------
 Using the lsmod command to check whether the driver has been loaded correctlly. You should get the output similar to the following text:
 
+```shell
   # lsmod
   Module                  Size  Used by
   rp_usbdisplay          12171  0 [permanent]
@@ -152,34 +159,43 @@ Using the lsmod command to check whether the driver has been loaded correctlly. 
   sysimgblt               2199  1 rp_usbdisplay
   sysfillrect             3295  1 rp_usbdisplay
   syscopyarea             3112  1 rp_usbdisplay
+```
 
 Also, you should find the following message in the dmesg log:
 
+```log
   [    7.535799] input: RoboPeakUSBDisplayTS as /devices/virtual/input/input0
 
   [    7.548115] usbcore: registered new interface driver rp-usbdisp
+```
 
 To verify the driver work with the RoboPeak USB Display, connect the display to the target system via the USB cable. The display should display RoboPea Logo and turn to black (or something else) for about 3 second.
 
 If the display keeps showing the white noise animation and the message : Waiting for signal, you should check the dmesg to see what happens. Normally, the driver will prompt the following message when the display has been pluged in :
 
+```log
    [ 1814.173232] rp-usbdisp 4-1:1.0: RP USB Display found (#1), Firmware Version: X.XX, S/N: XXXXXXXXXXXX
+```
 
 Once the driver recognizes the display, a framebuffer device will be created. (e.g. /dev/fb0)
 
 Use the following command to see whether framebuffer device is belonged to the USB display:
 
+```bash
   # cat /proc/fb
   
   2 rpusbdisp-fb < 
+```
 
 In the above example, /dev/fb2 is the related framebuffer device. To test whether the framebuffer device works, you may using the following command:
 
+```bash
   # cat /dev/urandom > /dev/fb2
+```
 
 You should see the display screen is filled with random color dots.
 
-V. make X11 output to the USB display
+V. Make X11 output to the USB display
 -------------------------------------
 
 There is a sample X11 config file under the source folder: rpusbdisp/drivers/linux-driver/xserver_conf/10-disp.conf. You can use this sample file as the template to make X11 on your target system to output to the USB display.
@@ -194,6 +210,12 @@ STEP3: copy the file 10-disp.conf to the X11's config folder (/usr/share/X11/xor
 STEP4: restart the X11 server
 
 The X11 desktop should appear on the USB display.
+User Mode SDK
+=============
+
+Besides the Linux kernel driver, we also provide a user mode sdk which is available on Windows, OS X, and Linux.
+
+You can find the SDK in the [drivers/usermode-sdk](https://github.com/cnwzhjs/rpusbdisp/tree/master/drivers/usermode-sdk) subdirectory.
 
 Contact Us
 ====================================
